@@ -341,3 +341,87 @@ Figure.6 = ggplot(df_sort_input_five %>% filter(type == "nosign"),aes(logFC, log
     ylab("-Log10(FDR q-value)")+
     labs(title="Early-Onset IA Versus Old-Onset un-KNN")
 Figure.6
+
+
+
+#+++++++++++++++++++++++++
+# Function to calculate the mean and the standard deviation for each group
+#+++++++++++++++++++++++++
+# data : a data frame
+# varname : the name of a column containing the variable to be summariezed
+# groupnames : vector of column names to be used as grouping variables
+data_summary <- function(data, varname, groupnames){
+  summary_func <- function(x, col){
+    c(mean = mean(x[[col]], na.rm=TRUE),
+      sd = sd(x[[col]], na.rm=TRUE))
+  }
+  data_sum<-ddply(data, groupnames, .fun=summary_func,
+                  varname)
+  data_sum <- rename(data_sum, c("mean" = varname))
+  return(data_sum)
+}
+IHC_Score_Insen_sum <- data_summary(IHC_Score_long_Insen, varname="IHC_Score",groupnames="Gene")
+IHC_Score_Sen_sum <- data_summary(IHC_Score_long_Sen, varname="IHC_Score",groupnames="Gene")
+IHC_Score_Area = read_xlsx("./data/BY_IHC_Score.xlsx")
+colnames(IHC_Score_Area)[1:2] = c("Tumor_Sample_Barcode","CR_Months")
+IHC_Score_Area_long = melt(IHC_Score_Area,
+                  id.vars=c("Tumor_Sample_Barcode","CR_Months","INTEN_BI"),
+                  variable.name="Gene",
+                  value.name="IHC_Score"
+                  ) %>%
+                arrange(Tumor_Sample_Barcode)
+
+IHC_Score_Area_long_Insen = IHC_Score_Area_long %>% filter(INTEN_BI == 1)
+IHC_Score_Area_long_Sen   = IHC_Score_Area_long %>% filter(INTEN_BI == 0)
+IHC_Score_Area_long_Insen$Gene_Group = paste0(IHC_Score_Area_long_Insen$Gene,"_Insen")
+IHC_Score_Area_long_Sen$Gene_Group = paste0(IHC_Score_Area_long_Sen$Gene,"_Sen")
+IHC_Score_Area_long_Group = rbind(IHC_Score_Area_long_Insen,IHC_Score_Area_long_Sen)
+IHC_Score_Area_long_Group$Gene_Group = factor(IHC_Score_Area_long_Group$Gene_Group, levels = c("EEF1E_Insen","EEF1E_Sen",
+                                                                                    "ILVBL_Insen","ILVBL_Sen",
+                                                                                    "SRPK1_Insen","SRPK1_Sen",
+                                                                                    "NUDT5_Insen","NUDT5_Sen"))
+IHC_Score_Area_Insen_sum <- data_summary(IHC_Score_Area_long_Insen, varname="IHC_Score",groupnames="Gene")
+IHC_Score_Area_Sen_sum <- data_summary(IHC_Score_Area_long_Sen, varname="IHC_Score",groupnames="Gene")
+IHC_Score_Area_Insen_sum$INTEN_BI = 1
+IHC_Score_Area_Sen_sum$INTEN_BI   = 0
+IHC_Score_Area_Insen_sum$Gene_Group = paste0(IHC_Score_Area_Insen_sum$Gene,"_Insen")
+IHC_Score_Area_Sen_sum$Gene_Group = paste0(IHC_Score_Area_Sen_sum$Gene,"_Sen")
+IHC_Score_Area_sum_Group = rbind(IHC_Score_Area_Insen_sum,IHC_Score_Area_Sen_sum)
+IHC_Score_Area_sum_Group$Gene_Group = factor(IHC_Score_Area_sum_Group$Gene_Group, levels = c("EEF1E_Insen","EEF1E_Sen",
+                                                                                    "ILVBL_Insen","ILVBL_Sen",
+                                                                                    "SRPK1_Insen","SRPK1_Sen",
+                                                                                    "NUDT5_Insen","NUDT5_Sen"))
+
+Figure.8 = ggplot(IHC_Score_Area_long_Group,aes(Gene_Group, IHC_Score))+
+  geom_bar(IHC_Score_Area_sum_Group,mapping = aes(x=Gene_Group, y=IHC_Score, fill=Gene_Group),
+           stat="identity",width=.8,alpha = 0.4,position=position_dodge(1.6)) +
+  geom_errorbar(IHC_Score_Area_sum_Group,mapping = aes(x=Gene_Group, y=IHC_Score,ymin=IHC_Score-sd, ymax=IHC_Score+sd,fill=Gene_Group), 
+                width=.2,position=position_dodge(1.2))+
+  geom_point(width=0.15,position = 'jitter',aes(fill=Gene_Group),shape=21,size=3.5,color="black",stroke=0.6)+
+  geom_signif(IHC_Score_Area_long_Group,mapping = aes(x=Gene_Group, y=IHC_Score),
+              comparisons = list(c("EEF1E_Insen","EEF1E_Sen"),c("ILVBL_Insen","ILVBL_Sen"),
+                                c("SRPK1_Insen","SRPK1_Sen"),c("NUDT5_Insen","NUDT5_Sen")),
+              test = "wilcox.test",
+              step_increase = 0,
+              tip_length = 0,
+              textsize = 6,
+              size = 1,
+              map_signif_level = F)+
+  scale_fill_manual(values=c('#73bbaf','#73bbaf',
+                             '#d15e67','#d15e67',
+                             '#f5bcaa','#f5bcaa',
+                             '#6c43a6','#6c43a6'))+
+  scale_color_manual(values=c('#73bbaf','#73bbaf',
+                             '#d15e67','#d15e67',
+                             '#f5bcaa','#f5bcaa',
+                             '#6c43a6','#6c43a6'))+
+  scale_y_continuous(expand = c(0,0),limits = c(-0.3,20))+
+  labs(x = "", y = "IHC Score")+
+  theme_classic()+
+  theme(axis.line.x=element_line(color="black",size=0.8),
+        axis.line.y=element_line(color="black",size=0.8),
+        axis.ticks.x=element_line(color="black",size=0.8),
+        axis.ticks.y=element_line(color="black",size=0.8),
+        axis.text.x = element_text(color="black",size=14),
+        axis.title.y=element_text(color="black",size=14))
+Figure.8
