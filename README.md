@@ -20,7 +20,7 @@ Tested on macOS Ventura and CentOS
 2. R packages
    - ggplot2
    - data.table
-   - Seurat
+   - maftools
    - dplyr
    - tidyr
    - ggpubr
