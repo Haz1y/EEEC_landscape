@@ -1,0 +1,3 @@
+sample_id,patient_id,status,lane,fastq1,fastq2
+CC07_wes_blood,CC07,N,F21FTSCCKF2823_HUMpkyrX,/data/storage/checked/MOCC/CC07_wes_blood_1.R1.fastq.gz,/data/storage/checked/MOCC/CC07_wes_blood_1.R2.fastq.gz
+CC07_wes_tumor,CC07,T,F21FTSCCKF2823_HUMpkyrX,/data/storage/checked/MOCC/CC07_wes_tumor_1.R1.fastq.gz,/data/storage/checked/MOCC/CC07_wes_tumor_1.R2.fastq.gz

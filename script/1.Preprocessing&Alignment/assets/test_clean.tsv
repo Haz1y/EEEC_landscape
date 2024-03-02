@@ -1,0 +1,3 @@
+id,sample,patient,status,platform,lane,fastq1,fastq2
+HCC1143_blood,HCC1143_blood,HCC1143,N,BGI,F21FTSCCKF2823_HUMpkyrX,/data/storage/checked/MOCC/CC07_wes_blood_1.R1.fastq.gz,/data/storage/checked/MOCC/CC07_wes_blood_1.R2.fastq.gz
+HCC1143_tumor,HCC1143_tumor,HCC1143,T,BGI,F21FTSCCKF2823_HUMpkyrX,/data/storage/checked/MOCC/CC07_wes_tumor_1.R1.fastq.gz,/data/storage/checked/MOCC/CC07_wes_tumor_1.R2.fastq.gz

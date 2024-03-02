@@ -1,0 +1,4 @@
+sample_id,patient_id,status,bam,bai
+SuDong_blood,Sudong,N,/data1/person/fanjp/project/test/test_wgs/out/03_bqsr/SuDong_blood.bqsr.bam,/data1/person/fanjp/project/test/test_wgs/out/03_bqsr/SuDong_blood.bqsr.bai
+SuDong_tumor,Sudong,T,/data1/person/fanjp/project/test/test_wgs/out/03_bqsr/SuDong_tumor.bqsr.bam,/data1/person/fanjp/project/test/test_wgs/out/03_bqsr/SuDong_tumor.bqsr.bai
+test_tumor,test,T,/data1/person/fanjp/project/test/test_wgs/out/03_bqsr/SuDong_tumor.bqsr.bam,/data1/person/fanjp/project/test/test_wgs/out/03_bqsr/SuDong_tumor.bqsr.bai

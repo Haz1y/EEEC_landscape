@@ -1,0 +1,3 @@
+sample,patient,status,bam,bai
+HCC1143_tumor,HCC1143,T,/data/person/fanjp/project/gatk_test/workshop_2002/3-somatic/bams/tumor.bam,/data/person/fanjp/project/gatk_test/workshop_2002/3-somatic/bams/tumor.bai
+HCC1143_blood,HCC1143,N,/data/person/fanjp/project/gatk_test/workshop_2002/3-somatic/bams/normal.bam,/data/person/fanjp/project/gatk_test/workshop_2002/3-somatic/bams/normal.bai

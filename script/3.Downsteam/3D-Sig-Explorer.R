@@ -1,70 +1,95 @@
 #--------------------------------------------------------------
-# filename : Analysis.R
-# Date : 2024-02-10
+# filename : 3D-Sig_Explorer.R
+# Date : 2024-03-02
 # contributor : Zhe Hu, MD
 # function: Proteogenomic analysis of early-onset endometrioid endometrial carcinoma
 # R version: R/4.1.2
 #--------------------------------------------------------------
 
-library(maftools)
 library(tidyverse)
+library(reshape2)
+library(ggpubr)
 library(ggsci)
-library(readxl)
-library(openxlsx)
-library(RColorBrewer)
-library(ComplexHeatmap)
-library(ggsignif)
+library(PResiduals)
 
-UCEC_IA_WES_laml = read.maf(maf = UCEC_IA_WES_maf,clinicalData = UCEC_IA_WES_clin,isTCGA = F)
-oncoplot(UCEC_IA_WES_laml,writeMatrix=T,genes=c(mutsigcv),
-         removeNonMutated = F,
-         clinicalFeatures = "age_type",
-         sortByAnnotation = T)
+load("mt_sig.Rda")
+sig_count = mt_sig$Exposure
+sig_count = t(sig_count)
+sig_count = as.data.frame(sig_count)
+sig_count$Tumor_Sample_Barcode = rownames(sig_count)
+UCEC_IA_clin = UCEC_clin %>% filter(clinical_stage== "IA")
+common_sig_IA_count = sig_count[ UCEC_IA_clin$Tumor_Sample_Barcode,]
+common_sig_IA_count_clin = merge(common_sig_IA_count,UCEC_IA_clin,by="Tumor_Sample_Barcode")
+common_sig_IA_pct = sig_pct[ UCEC_IA_clin$Tumor_Sample_Barcode,]
+common_sig_IA_pct_clin = merge(common_sig_IA_pct,UCEC_IA_clin,by="Tumor_Sample_Barcode")
+Early_common_sig_IA_pct_clin = common_sig_IA_pct_clin %>%filter(age_at_diagnosis<40)
+SBS_BY_compare_plot = common_sig_IA_pct_clin[,c("Tumor_Sample_Barcode","age_at_diagnosis",paste0("Sig",1:14))]
+SBS_BY_compare_plot$age_group = ifelse(SBS_BY_compare_plot$age_at_diagnosis<=40,"Early","Old")
+rownames(SBS_BY_compare_plot) = SBS_BY_compare_plot$Tumor_Sample_Barcode
 
-CPTAC_maf =read_tsv("./data/ucec_cptac_2020/data_mutations.txt",skip=0)
-CPTAC_laml = read.maf(maf = CPTAC_maf)
-CPTAC_WES_titv = titv(CPTAC_laml)
+SBS_BY_compare_plot_long$sig_num = as.double(gsub("Sig","",SBS_BY_compare_plot_long$signature))/2
+SBS_BY_compare_plot_long %>% 
+ggplot( aes(x=sig_num , y=Exposure.norm,fill=age_group))+
+    #geom_stripped_cols(odd='white',even='grey90')+
 
-TCGA_maf =read_tsv("./data/ucec_tcga_pan_can_atlas_2018/data_mutations.txt",skip=0)
-TCGA_laml = read.maf(maf = TCGA_maf)
-TCGA_WES_titv = titv(TCGA_laml)
+    stat_summary(fun.min = function(x){quantile(x)[2]},fun.max = function(x){quantile(x)[4]},
+               geom = 'errorbar',color='#919191',width=0.01,size=0.5,
+               position = position_dodge(width = 0.3))+
+    geom_point(size=3,stat = 'summary',fun=median,position = position_dodge(width = 0.3),aes(color = age_group))+
+    theme_bw()+
+    theme(legend.title = element_text(face="bold"),
+      legend.position = c(.85, .65),
+      plot.title = element_text(hjust=0.5,face="bold", size=15),
+        strip.text = element_blank(),
+        panel.grid = element_blank())+
+    stat_compare_means(
+      hide.ns = F,
+      method = "t.test",label ='p.signif'
+     )+
+    scale_x_continuous(limits=c(0.4,7.1),breaks=c(0.5, 1, 1.5, 2,
+                                                2.5, 3, 3.5, 4, 
+                                                4.5, 5, 5.5, 6, 
+                                                6.5, 7),
+                      labels = paste0("Sig",1:14))+
+    scale_color_npg()
 
 
-TCGA_titv = TCGA_WES_titv$fraction.contribution
-TCGA_titv$Cohort = "TCGA"
-CPTAC_titv = CPTAC_WES_titv$fraction.contribution
-CPTAC_titv$Cohort = "CPTAC"
+ggscatter(common_sig_IA_pct_clin, x = "age_at_diagnosis", y = "Sig6", 
+          add = "reg.line", conf.int = TRUE, 
+          add.params = list(color = "#3fa3ae", fill = "#deeded"),
+          shape = 7,size= 1,color ="#585958",
+          cor.coef = TRUE, cor.method = "spearman")
 
-TJFD_titv = UCEC_IA_WES_titv$fraction.contribution
-TJFD_titv$Cohort = "TJFD"
 
-final_titv = Reduce(rbind,list(TCGA_titv,CPTAC_titv,TJFD_titv))
+ggscatter(common_sig_IA_count_clin, x = "age_at_diagnosis", y = "Sig4", 
+          add = "reg.line", conf.int = TRUE, 
+          add.params = list(color = "#3fa3ae", fill = "#deeded"),
+          shape = 7,size= 1,color ="#585958",
+          cor.coef = TRUE, cor.method = "spearman")
 
-final_titv$Cohort = factor(final_titv$Cohort ,
-                          levels = c("TCGA","CPTAC","TJFD"))
 
-ggplot(final_titv, aes(x=Cohort,y=`C>T`))+
-  geom_violin(aes(fill = Cohort,color=Cohort), trim = FALSE)+
-  geom_boxplot(aes(fill=Cohort),notch = F,width=0.3)+
-  theme_bw(base_line_size = 1.05,base_rect_size = 1.05)+
-    ggsci::scale_fill_npg()+
-    ggsci::scale_color_npg()+
-  #annotate("rect", xmin = 0, xmax =3.5,  ymin =-5 , ymax = 105, alpha = 0.1,fill="#FAE3AD") +
-  theme(axis.text=element_text(colour='black',size=10))+
-  scale_y_continuous(expand = c(0, 0), limit = c(-5, 110))+
-  geom_signif(
-    comparisons = list(c("TCGA", "CPTAC")),
-    map_signif_level = FALSE,
-    y_position = 90, tip_length = 0, vjust = 0.2)+
-  geom_signif(
-    comparisons = list(c("CPTAC", "TJFD")),
-    map_signif_level = FALSE,
-    y_position = 95, tip_length = 0, vjust = 0.2)+
-  geom_signif(
-    comparisons = list(c("TCGA", "TJFD")),
-    map_signif_level = FALSE,
-    y_position = 100, tip_length = 0, vjust = 0.2
-  )
+common_Clin_IA = common_Clin %>% filter(stage_subtype == "IA")
+partial_Spearman(TMB_Nonsyno|age_at_diagnosis ~ TCGA_Subtype,data=common_Clin_IA)
+
+common_Clin_IA = common_Clin %>% filter(stage_subtype == "IA")
+partial_Spearman(TMB_Nonsyno|age_at_diagnosis ~ stage_subtype,
+                  fit.x="poisson", fit.y="lm.emp",data=common_Clin)
+
+partial_Spearman(TMB_Nonsyno|age_at_diagnosis ~ stage_subtype,
+                  data=common_Clin)
+
+
+
+SBS_BY_compare_plot_long %>% 
+ggplot( aes(x=sig_num , y=Exposure.norm,fill=age_group))+
+    #geom_stripped_cols(odd='white',even='grey90')+
+
+    stat_summary(fun.min = function(x){quantile(x)[2]},fun.max = function(x){quantile(x)[4]},
+               geom = 'errorbar',color='#919191',width=0.01,size=0.5,
+               position = position_dodge(width = 0.3))+
+    geom_point(size=3,stat = 'summary',fun=median,position = position_dodge(width = 0.3),aes(color = age_group))+
+    theme_bw()
+
 
 
 sig_pct = mt_sig$Exposure.norm
@@ -285,143 +310,3 @@ scale_color_npg()+
 geom_signif(comparisons = my_comparisions,
               test = "wilcox.test",
                 map_signif_level = T)
-
-
-hallmark_gmt = "data/h.all.v7.5.1.symbols.gmt"
-hallmark = read.gmt(hallmark_gmt)
-hallmark$term = gsub("HALLMARK_","",hallmark$term)
-hallmark.list = hallmark %>% split(.$term) %>% lapply("[[",2)
-IA_age_tumor_df = IA_age_tumor_df %>% arrange(-FC)
-gene_fc = IA_age_tumor_df$FC 
-head(gene_fc)
-names(gene_fc) <- IA_age_tumor_df$gene 
-head(gene_fc)
-
-gsea_hall_pre <- GSEA(gene_fc,
-                  minGSSize = 1,
-                  maxGSSize = 10000,
-                  #nperm = 100,
-                  #eps = 0.0001,
-                pvalueCutoff =1,
-                  pAdjustMethod ="none",
-             TERM2GENE = hallmark) #GSEA分析
-head(gsea_hall_pre)
-
-Figure.6 = ggplot(df_sort_input_five %>% filter(type == "nosign"),aes(logFC, logP))+
-  geom_hline(yintercept = -log10(0.01), linetype = "dashed", color = "#999999")+
-  geom_vline(xintercept = c(-1,1), linetype = "dashed", color = "#999999")+
-  geom_point(data = df_sort_input_five %>% filter(type == "nosign"), aes(fill=type,color=type),shape=21,stroke=0.2,alpha = 1,size =7)+
-  geom_point(data = df_sort_input_five %>% filter(type %in%  c("up","down")), aes(fill=type,color=type),shape=21,stroke=0.1,alpha = 1,size =7)+
-  geom_point(data = df_sort_input_five %>%filter(type %in%  c("more_up","more_down")), aes(fill=type,color=type),shape=21,stroke=0.2,alpha = 1,size =7)+
-  scale_fill_manual(values=c('more_down' = '#5DAEC7',
-                             'down' = '#ABD3DE',
-                             'more_up' = '#DA4C35',
-                             'up'='#F0B7AE',
-                             'nosign'='#d2dae2'))+
-  scale_color_manual(values=c('more_down' = 'black',
-                             'down' = '#767777',
-                             'more_up' = 'black',
-                             'up'='#767777',
-                             'nosign'='#d2dae2'))+
- xlim(-5,5)+
-  theme_bw()+
-  theme(panel.grid = element_blank(),
-       #legend.position = c(0.01,0.7),
-       legend.justification = c(0,1),
-       #text=element_text(family="Arial"
-       )+
-  guides(col = guide_colorbar(title = "-Log10_q-value"),
-        size = "none")+
-  geom_text_repel(data= df_sort_input_five,aes(label = label_new),
-                  size = 5,box.padding = unit(1, "lines"),
-                  point.padding = unit(1, "lines"), 
-                  segment.color = "black", 
-                  show.legend = FALSE)+
-    xlab("Log2FC")+
-    ylab("-Log10(FDR q-value)")+
-    labs(title="Early-Onset IA Versus Old-Onset un-KNN")
-Figure.6
-
-
-
-#+++++++++++++++++++++++++
-# Function to calculate the mean and the standard deviation for each group
-#+++++++++++++++++++++++++
-# data : a data frame
-# varname : the name of a column containing the variable to be summariezed
-# groupnames : vector of column names to be used as grouping variables
-data_summary <- function(data, varname, groupnames){
-  summary_func <- function(x, col){
-    c(mean = mean(x[[col]], na.rm=TRUE),
-      sd = sd(x[[col]], na.rm=TRUE))
-  }
-  data_sum<-ddply(data, groupnames, .fun=summary_func,
-                  varname)
-  data_sum <- rename(data_sum, c("mean" = varname))
-  return(data_sum)
-}
-IHC_Score_Insen_sum <- data_summary(IHC_Score_long_Insen, varname="IHC_Score",groupnames="Gene")
-IHC_Score_Sen_sum <- data_summary(IHC_Score_long_Sen, varname="IHC_Score",groupnames="Gene")
-IHC_Score_Area = read_xlsx("./data/BY_IHC_Score.xlsx")
-colnames(IHC_Score_Area)[1:2] = c("Tumor_Sample_Barcode","CR_Months")
-IHC_Score_Area_long = melt(IHC_Score_Area,
-                  id.vars=c("Tumor_Sample_Barcode","CR_Months","INTEN_BI"),
-                  variable.name="Gene",
-                  value.name="IHC_Score"
-                  ) %>%
-                arrange(Tumor_Sample_Barcode)
-
-IHC_Score_Area_long_Insen = IHC_Score_Area_long %>% filter(INTEN_BI == 1)
-IHC_Score_Area_long_Sen   = IHC_Score_Area_long %>% filter(INTEN_BI == 0)
-IHC_Score_Area_long_Insen$Gene_Group = paste0(IHC_Score_Area_long_Insen$Gene,"_Insen")
-IHC_Score_Area_long_Sen$Gene_Group = paste0(IHC_Score_Area_long_Sen$Gene,"_Sen")
-IHC_Score_Area_long_Group = rbind(IHC_Score_Area_long_Insen,IHC_Score_Area_long_Sen)
-IHC_Score_Area_long_Group$Gene_Group = factor(IHC_Score_Area_long_Group$Gene_Group, levels = c("EEF1E_Insen","EEF1E_Sen",
-                                                                                    "ILVBL_Insen","ILVBL_Sen",
-                                                                                    "SRPK1_Insen","SRPK1_Sen",
-                                                                                    "NUDT5_Insen","NUDT5_Sen"))
-IHC_Score_Area_Insen_sum <- data_summary(IHC_Score_Area_long_Insen, varname="IHC_Score",groupnames="Gene")
-IHC_Score_Area_Sen_sum <- data_summary(IHC_Score_Area_long_Sen, varname="IHC_Score",groupnames="Gene")
-IHC_Score_Area_Insen_sum$INTEN_BI = 1
-IHC_Score_Area_Sen_sum$INTEN_BI   = 0
-IHC_Score_Area_Insen_sum$Gene_Group = paste0(IHC_Score_Area_Insen_sum$Gene,"_Insen")
-IHC_Score_Area_Sen_sum$Gene_Group = paste0(IHC_Score_Area_Sen_sum$Gene,"_Sen")
-IHC_Score_Area_sum_Group = rbind(IHC_Score_Area_Insen_sum,IHC_Score_Area_Sen_sum)
-IHC_Score_Area_sum_Group$Gene_Group = factor(IHC_Score_Area_sum_Group$Gene_Group, levels = c("EEF1E_Insen","EEF1E_Sen",
-                                                                                    "ILVBL_Insen","ILVBL_Sen",
-                                                                                    "SRPK1_Insen","SRPK1_Sen",
-                                                                                    "NUDT5_Insen","NUDT5_Sen"))
-
-Figure.8 = ggplot(IHC_Score_Area_long_Group,aes(Gene_Group, IHC_Score))+
-  geom_bar(IHC_Score_Area_sum_Group,mapping = aes(x=Gene_Group, y=IHC_Score, fill=Gene_Group),
-           stat="identity",width=.8,alpha = 0.4,position=position_dodge(1.6)) +
-  geom_errorbar(IHC_Score_Area_sum_Group,mapping = aes(x=Gene_Group, y=IHC_Score,ymin=IHC_Score-sd, ymax=IHC_Score+sd,fill=Gene_Group), 
-                width=.2,position=position_dodge(1.2))+
-  geom_point(width=0.15,position = 'jitter',aes(fill=Gene_Group),shape=21,size=3.5,color="black",stroke=0.6)+
-  geom_signif(IHC_Score_Area_long_Group,mapping = aes(x=Gene_Group, y=IHC_Score),
-              comparisons = list(c("EEF1E_Insen","EEF1E_Sen"),c("ILVBL_Insen","ILVBL_Sen"),
-                                c("SRPK1_Insen","SRPK1_Sen"),c("NUDT5_Insen","NUDT5_Sen")),
-              test = "wilcox.test",
-              step_increase = 0,
-              tip_length = 0,
-              textsize = 6,
-              size = 1,
-              map_signif_level = F)+
-  scale_fill_manual(values=c('#73bbaf','#73bbaf',
-                             '#d15e67','#d15e67',
-                             '#f5bcaa','#f5bcaa',
-                             '#6c43a6','#6c43a6'))+
-  scale_color_manual(values=c('#73bbaf','#73bbaf',
-                             '#d15e67','#d15e67',
-                             '#f5bcaa','#f5bcaa',
-                             '#6c43a6','#6c43a6'))+
-  scale_y_continuous(expand = c(0,0),limits = c(-0.3,20))+
-  labs(x = "", y = "IHC Score")+
-  theme_classic()+
-  theme(axis.line.x=element_line(color="black",size=0.8),
-        axis.line.y=element_line(color="black",size=0.8),
-        axis.ticks.x=element_line(color="black",size=0.8),
-        axis.ticks.y=element_line(color="black",size=0.8),
-        axis.text.x = element_text(color="black",size=14),
-        axis.title.y=element_text(color="black",size=14))
-Figure.8

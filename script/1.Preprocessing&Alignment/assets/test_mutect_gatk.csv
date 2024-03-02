@@ -1,0 +1,3 @@
+sample,patient,status,bam,bai
+HCC1143_tumor,HCC1143,T,/data/person/fanjp/project/test/test_wgs/test_all/out1/03_bqsr/HCC1143_tumor.bqsr.bam,/data/person/fanjp/project/test/test_wgs/test_all/out1/03_bqsr/HCC1143_tumor.bqsr.bai
+HCC1143_blood,HCC1143,N,/data/person/fanjp/project/test/test_wgs/test_all/out1/03_bqsr/HCC1143_blood.bqsr.bam,/data/person/fanjp/project/test/test_wgs/test_all/out1/03_bqsr/HCC1143_blood.bqsr.bai

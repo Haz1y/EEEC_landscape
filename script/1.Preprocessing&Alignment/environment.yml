@@ -1,0 +1,22 @@
+# You can use this file to create a conda environment for this pipeline:
+#   conda env create -f environment.yml
+name: dnaseq
+channels:
+  - conda-forge
+  - bioconda
+  - defaults
+dependencies:
+  - perl
+  - perl-file-spec
+  - perl-pod-usage
+  - perl-getopt-long
+  - python=3.9.7
+  - pip
+  - samtools=1.14
+  - bwa=0.7.17
+  - fastqc=0.11.9
+  - bcftools=1.14
+  - gatk4=4.2.3.0
+  - cnvkit=0.9.9
+  - pip:
+    - pysam
